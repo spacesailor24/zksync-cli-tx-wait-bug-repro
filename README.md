@@ -51,7 +51,7 @@ My expectation is that after `await tx.wait();`, the balance of `receiver` shoul
 
 The `console.log(receipt);` returns something akin to:
 
-```json
+```
 TransactionReceipt {
   provider: Provider { _contractAddresses: {} },
   to: '0xAf0C73483AeD5C2029aB1dF32F3D6B75bA479088',
