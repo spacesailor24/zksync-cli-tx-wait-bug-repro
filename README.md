@@ -1,51 +1,110 @@
-# zkSync Hardhat project template
+# zksync-cli `tx.wait()` Bug
 
-This project was scaffolded with [zksync-cli](https://github.com/matter-labs/zksync-cli).
+I created this repo using: `npx zksync-cli create demo --template hardhat_solidity`
 
-## Project Layout
+## Reproduction Steps
 
-- `/contracts`: Contains solidity smart contracts.
-- `/deploy`: Scripts for contract deployment and interaction.
-- `/test`: Test files.
-- `hardhat.config.ts`: Configuration settings.
+- `git clone git@github.com:spacesailor24/zksync-cli-tx-wait-bug-repro.git`
+- `pnpm i`
+- `pnpm test`
 
-## How to Use
+## The Bug
 
-- `npm run compile`: Compiles contracts.
-- `npm run deploy`: Deploys using script `/deploy/deploy.ts`.
-- `npm run interact`: Interacts with the deployed contract using `/deploy/interact.ts`.
-- `npm run test`: Tests the contracts.
+In [bugRepro.test.ts](./test/bugRepro.test.ts), I have the following:
 
-Note: Both `npm run deploy` and `npm run interact` are set in the `package.json`. You can also run your files directly, for example: `npx hardhat deploy-zksync --script deploy.ts`
+```typescript
+import { getWallet, LOCAL_RICH_WALLETS } from '../deploy/utils';
+import { parseEther } from "ethers";
 
-### Environment Settings
+describe("BugRepro", function () {
+    const wallet = getWallet(LOCAL_RICH_WALLETS[0].privateKey);
 
-To keep private keys safe, this project pulls in environment variables from `.env` files. Primarily, it fetches the wallet's private key.
-
-Rename `.env.example` to `.env` and fill in your private key:
-
+    it("Should transfer 1 ETH", async function() {
+        const receiver = '0xAf0C73483AeD5C2029aB1dF32F3D6B75bA479088';
+        console.log(await wallet.provider.getBalance(receiver));
+    
+        const tx = await wallet.sendTransaction({ value: parseEther('1'), to: receiver });
+        const receipt = await tx.wait();
+        console.log(receipt);
+    
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+        console.log(await wallet.provider.getBalance(receiver));
+      });
+});
 ```
-WALLET_PRIVATE_KEY=your_private_key_here...
+
+My expectation is that after `await tx.wait();`, the balance of `receiver` should be updated to `1 ETH`. However, it seems that after the `tx.wait` promise is resolved, the account state for `receiver` isn't actually updated
+
+The `console.log(receipt);` returns something akin to:
+
+```json
+TransactionReceipt {
+  provider: Provider { _contractAddresses: {} },
+  to: '0xAf0C73483AeD5C2029aB1dF32F3D6B75bA479088',
+  from: '0x36615Cf349d7F6344891B1e7CA7C72883F5dc049',
+  contractAddress: null,
+  hash: '0x251b6507d72d62ad2bda3f11b9494099c6a324edcdd8fbc8a971cd0baa9535f6',
+  index: 0,
+  blockHash: '0x200135b8f8aaace042f84902a7be3fca0494f0c34d75e47b0a38bcb72e514e31',
+  blockNumber: 1,
+  logsBloom: '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+  gasUsed: 1236210n,
+  blobGasUsed: undefined,
+  cumulativeGasUsed: 0n,
+  gasPrice: 100000000n,
+  blobGasPrice: undefined,
+  type: 0,
+  status: 1,
+  root: '0x0000000000000000000000000000000000000000000000000000000000000000',
+  l1BatchNumber: 1,
+  l1BatchTxIndex: undefined,
+  l2ToL1Logs: [],
+  _logs: [...]
+}
 ```
 
-### Network Support
+which implies the transaction has actually been mined, but the balance of `receiver` doesn't show the `1 ETH` until last couple of `console.log(await wallet.provider.getBalance(receiver));`:
 
-`hardhat.config.ts` comes with a list of networks to deploy and test contracts. Add more by adjusting the `networks` section in the `hardhat.config.ts`. To make a network the default, set the `defaultNetwork` to its name. You can also override the default using the `--network` option, like: `hardhat test --network dockerizedNode`.
+```bash
+> zksync-hardhat-template@ test /Users/whyit/code/spacesailor24/demo
+> hardhat test --network hardhat
 
-### Local Tests
 
-Running `npm run test` by default runs the [zkSync In-memory Node](https://era.zksync.io/docs/tools/testing/era-test-node.html) provided by the [@matterlabs/hardhat-zksync-node](https://era.zksync.io/docs/tools/hardhat/hardhat-zksync-node.html) tool.
 
-Important: zkSync In-memory Node currently supports only the L2 node. If contracts also need L1, use another testing environment like Dockerized Node. Refer to [test documentation](https://era.zksync.io/docs/tools/testing/) for details.
+  BugRepro
+0n
+0n
+0n
+0n
+0n
+0n
+0n
+0n
+0n
+0n
+0n
+1000000000000000000n
+1000000000000000000n
+1000000000000000000n
+1000000000000000000n
+1000000000000000000n
+1000000000000000000n
+    ✔ Should transfer 1 ETH (325ms)
 
-## Useful Links
 
-- [Docs](https://era.zksync.io/docs/dev/)
-- [Official Site](https://zksync.io/)
-- [GitHub](https://github.com/matter-labs)
-- [Twitter](https://twitter.com/zksync)
-- [Discord](https://join.zksync.dev/)
-
-## License
-
-This project is under the [MIT](./LICENSE) license.
+  1 passing (328ms)
+```

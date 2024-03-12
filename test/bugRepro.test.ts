@@ -9,7 +9,9 @@ describe("BugRepro", function () {
         console.log(await wallet.provider.getBalance(receiver));
     
         const tx = await wallet.sendTransaction({ value: parseEther('1'), to: receiver });
-        await tx.wait();
+        const receipt = await tx.wait();
+
+        // console.log(receipt);
     
         console.log(await wallet.provider.getBalance(receiver));
         console.log(await wallet.provider.getBalance(receiver));
